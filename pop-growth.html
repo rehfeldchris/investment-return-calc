@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>population growth</title>
+</head>
+<body>
+<script>
+"use strict";
+function returnRate(presentValue, futureValue, years) {
+    return Math.pow(futureValue / presentValue, 1.0 / years) - 1.0;
+}
+
+class Clock {
+    year = 0;
+}
+class Person {
+    id;
+    clock;
+    birthYear;
+    numChildren = 0;
+    lastYearGaveBirth = 0;
+    constructor(clock, birthYear) {
+        this.id = Person.NEXT_ID++;
+        this.clock = clock;
+        this.birthYear = birthYear;
+    }
+    getAge() {
+        return this.clock.year - this.birthYear;
+    }
+    canReproduce() {
+        return this.getAge() >= Person.REPRODUCTIVE_START_AGE
+            && this.numChildren < Person.MAX_CHILDREN
+            && this.clock.year - this.lastYearGaveBirth >= Person.MIN_YEARS_BETWEEN_BIRTHS;
+    }
+    reproduce() {
+        this.numChildren++;
+        this.lastYearGaveBirth = this.clock.year;
+        return new Person(this.clock, this.clock.year);
+    }
+    isDead() {
+        return this.getAge() >= Person.DEATH_AGE || Math.random() >= (1 - (Person.YEARLY_PERCENT_CHANCE_DEATH / 100));
+    }
+    toString() {
+        return `#${this.id} age: ${this.getAge()} children: ${this.numChildren}`;
+    }
+}
+Person.NEXT_ID = 1;
+Person.REPRODUCTIVE_START_AGE = 18;
+Person.DEATH_AGE = 70;
+Person.YEARLY_PERCENT_CHANCE_DEATH = 0.1;
+Person.YEARLY_PERCENT_CHANCE_DEATH = 0.0;
+Person.MAX_CHILDREN = 4;
+Person.MIN_YEARS_BETWEEN_BIRTHS = 2; // We use 2 years instead of 1 because we model 1 Person as a man and woman, so we need 2 years to give birth to both.
+
+const numSimulationYears = 240;
+
+const alivePeople = new Set();
+const deadPeople = new Set();
+const clock = new Clock();
+const popByYearRecords = new Map();
+
+// Start with 2 ppl.
+alivePeople.add(new Person(clock, clock.year));
+let popSizePrevYr = alivePeople.size * 2;
+for (clock.year = 0; clock.year < numSimulationYears; clock.year++) {
+    for (const p of alivePeople) {
+        if (p.isDead()) {
+            alivePeople.delete(p);
+            deadPeople.add(p);
+        } else if (p.canReproduce()) {
+            alivePeople.add(p.reproduce());
+        }
+    }
+    const popSizeCurrYr = alivePeople.size * 2;
+    const popSizeDiff = popSizeCurrYr - popSizePrevYr;
+    const percentChange = 100 * popSizeDiff / popSizePrevYr;
+    popByYearRecords.set(clock.year, {year: clock.year, popSizeCurrYr, popSizePrevYr, popSizeDiff, percentChange});
+
+    const yr50ago = popByYearRecords.get(clock.year - 50);
+    if (yr50ago) {
+        const cagr = returnRate(yr50ago.popSizeCurrYr, popSizeCurrYr, 50);
+        console.log(`50 yr cagr (${Math.round(cagr * 100)}%) `);
+    }
+
+    console.log(`yr ${clock.year} pop ${popSizeCurrYr.toLocaleString()} popPrev ${popSizePrevYr.toLocaleString()} growth ${popSizeDiff.toLocaleString()} (${Math.round(percentChange)}%) `);
+    popSizePrevYr = popSizeCurrYr;
+}
+console.log(deadPeople);
+console.log(alivePeople);
+</script>
+</body>
+</html>

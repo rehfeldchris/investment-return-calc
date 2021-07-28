@@ -1,0 +1,655 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Compound Interest Growth Calculator</title>
+    <style>
+        html, body {
+            font-family: sans-serif;
+            font-size: 100%;
+        }
+        #yearly-rows {
+            border: 1px solid #aaa;
+            border-collapse: collapse;
+        }
+        #yearly-rows td, #yearly-rows th {
+            border: 1px solid #aaa;
+            padding: 3px;
+            text-align: center;
+        }
+        .derivative {
+            white-space: nowrap;
+        }
+        .profiles td:not(:nth-child(1)) {
+            padding: 2em 1em;
+            cursor: pointer;
+        }
+        .profiles td:not(:nth-child(1)):hover {
+            background: #ccccff;
+        }
+        .small-note {
+            font-size: 0.8rem;
+            color: #555;
+
+        }
+    </style>
+</head>
+<body>
+<script>
+
+
+
+    function zeroBlanks(formname)
+    {
+        var i, ctrl;
+        for (i = 0; i < formname.elements.length; i++)
+        {
+            ctrl = formname.elements[i];
+            if (ctrl.type == "text")
+            {
+                if (makeNumeric(ctrl.value) == "")
+                    ctrl.value = "0";
+            }
+        }
+    }
+
+    function filterChars(s, charList)
+    {
+        var s1 = "" + s; // force s1 to be a string data type
+        var i;
+        for (i = 0; i < s1.length; )
+        {
+            if (charList.indexOf(s1.charAt(i)) < 0)
+                s1 = s1.substring(0,i) + s1.substring(i+1, s1.length);
+            else
+                i++;
+        }
+        return s1;
+    }
+
+
+    function makeNumeric(str) {
+        str = String(str);
+        const sign = str.trimLeft()[0] === '-' ? '-' : '';
+        return sign + str.replace(/[^0-9.]/g, '');
+    }
+
+    function numval(val,digits,minval,maxval)
+    {
+        val = makeNumeric(val);
+        if (val == "" || isNaN(val)) val = 0;
+        val = parseFloat(val);
+        if (digits != null)
+        {
+            var dec = Math.pow(10,digits);
+            val = (Math.round(val * dec))/dec;
+        }
+        if (minval != null && val < minval) val = minval;
+        if (maxval != null && val > maxval) val = maxval;
+        return parseFloat(val);
+    }
+
+    function forceToNumber(val, digits, minVal) {
+        val = makeNumeric(val);
+        if (val == "" || isNaN(val)) val = 0;
+        val = parseFloat(val);
+        if (digits != null)
+        {
+            var dec = Math.pow(10,digits);
+            val = (Math.round(val * dec))/dec;
+        }
+        if (minVal != null && val < minVal) val = minVal;
+        return parseFloat(val);
+    }
+
+    function forceToNumberIfPresent(val, digits, minVal) {
+        return isEmpty(val) ? val : forceToNumber(val, digits, minVal);
+    }
+
+    function formatNumber(val,digits,minval,maxval)
+    {
+        if (digits === undefined) {
+            digits = 2;
+        }
+        var sval = "" + numval(val,digits,minval,maxval);
+        var i;
+        var iDecpt = sval.indexOf(".");
+        if (iDecpt < 0) iDecpt = sval.length;
+        if (digits != null && digits > 0)
+        {
+            if (iDecpt == sval.length)
+                sval = sval + ".";
+            var places = sval.length - sval.indexOf(".") - 1;
+            for (i = 0; i < digits - places; i++)
+                sval = sval + "0";
+        }
+        var firstNumchar = 0;
+        if (sval.charAt(0) == "-") firstNumchar = 1;
+        for (i = iDecpt - 3; i > firstNumchar; i-= 3)
+            sval = sval.substring(0, i) + "," + sval.substring(i);
+
+        return sval;
+    }
+
+    let dollarFormatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+    });
+
+    let percentFormatter = new Intl.NumberFormat('en-US', {
+        style: 'percent',
+        minimumFractionDigits: 2,
+    });
+
+    const formatter = new Intl.NumberFormat({maximumFractionDigits:2});
+    // const formatter = new Intl.NumberFormat(undefined, {style: 'currency', currency: 'USD'});
+    function formatMoney(num) {
+        return formatter.format(num);
+    }
+
+    function formatNumberIfPresent(val, digits, minval, maxval)
+    {
+        return isEmpty(val) ? val : formatNumber(val, digits, minval, maxval);
+    }
+
+    function presentValue(futureValue, interestRate, years) {
+        return futureValue / Math.pow(1 + interestRate, years);
+    }
+
+    function futureValue(principle, interestRate, years) {
+        return principle * Math.pow(1 + interestRate, years);
+    }
+
+    function calcInvestmentProgressByYear(principle, interestRate, years, annualAddition, annualAdditionInterestRate, annualAdditionAtStartOfYear = false) {
+        let total = principle;
+        let addition = annualAddition;
+        const yearlyRecords = [];
+        for (let year = 1; year <= years; year++) {
+            const prevTotal = total;
+            let annualInterest;
+
+            if (annualAdditionAtStartOfYear) {
+                total += addition;
+                annualInterest = total * interestRate;
+                total += annualInterest;
+            } else {
+                annualInterest = total * interestRate;
+                total += annualInterest;
+                total += addition;
+            }
+
+            yearlyRecords.push({total, year, addition, annualInterest});
+            addition *= (1 + annualAdditionInterestRate);
+        }
+
+        return {principle, interestRate, years, annualAddition, annualAdditionInterestRate, annualAdditionAtStartOfYear, yearlyRecords, total};
+    }
+
+    function returnRate(presentValue, futureValue, years) {
+        return Math.pow(futureValue / presentValue, 1.0 / years) - 1.0;
+    }
+
+    function geomSeries(z,m,n)
+    {
+        var amt;
+        if (z == 1.0) amt = n + 1;
+        else amt = (Math.pow(z,n + 1) - 1)/(z - 1);
+        if (m >= 1) amt -= geomSeries(z,0,m-1);
+        return amt;
+    }
+
+    function basicInvestment(p,r,y,c)
+    {
+        if (c == null) c = 0;
+
+        return futureValue(p,r,y) + c*geomSeries(1+r,1,y);
+    }
+
+    function isEmpty(str) {
+        return (str || '').trim() === '';
+    }
+
+    function calc() {
+        const form = qs('#cagr-calc');
+
+        var principle = numval(form.principle.value);
+        var annualAddition = numval(form.annualAddition.value);
+        var annualAdditionInterestRate = numval(form.annualAdditionInterestRate.value) / 100;
+        var annualAdditionAtStartOfYear = false;
+        var interestRate = numval(form.interestRate.value) / 100;
+        var years = numval(form.years.value);
+        var derivativeDegree = numval(form.derivativeDegree.value);
+
+        const table = qs('#yearly-rows');
+        const tbody = qs('#yearly-rows tbody');
+        table.hidden = false;
+        tbody.innerHTML = '';
+
+        const result = calcInvestmentProgressByYear(principle, interestRate, years, annualAddition, annualAdditionInterestRate, annualAdditionAtStartOfYear);
+        // addDerivativeColumn(result.yearlyRecords);
+        addDerivativeColumns(result.yearlyRecords, derivativeDegree);
+        result.yearlyRecords.forEach(row => {
+            const html = [
+                `<td>${row.year}</td>`,
+                `<td>${formatMoney(row.addition)}</td>`,
+                `<td>${formatMoney(row.annualInterest)}</td>`,
+                `<td>${formatMoney(row.total)}</td>`,
+                ... row.derivativesOfTotal.slice(1).map(val => `<td>${formatMoney(val)}</td>`)
+            ].join("\n");
+            tbody.appendChild(fromHtml(`<tr>${html}</tr>`));
+            // tbody.appendChild(fromHtml(`<tr><td>${row.year}</td><td>${formatMoney(row.addition)}</td><td>${formatMoney(row.total)}</td><td>${formatMoney(row.derivativesOfTotal[1])}</td><td>${formatMoney(row.derivativesOfTotal[2])}</td><td>${formatMoney(row.derivativesOfTotal[3])}</td><td>${formatMoney(row.derivativesOfTotal[4])}</td><td>${formatMoney(row.derivativesOfTotal[5])}</td><td>${formatMoney(row.derivativesOfTotal[6])}</td><td>${formatMoney(row.derivativesOfTotal[7])}</td></tr>`));
+            // tbody.appendChild(fromHtml(`<tr><td>${row.year}</td><td>${formatMoney(row.addition)}</td><td>${formatMoney(row.total)}</td><td>${formatMoney(row.oneYearGain)}</td><td>${formatMoney(row.oneYearGainDiff)}</td><td>${formatMoney(row.oneYearGainDiffDiff)}</td></tr>`));
+        });
+
+        form.futureValue.value = formatNumber(result.total);
+
+        const yearlyRecord = result.yearlyRecords[0];
+        qs('#sample-explanation').hidden = false;
+        qs('#principal').textContent = dollarFormatter.format(principle);
+        qs('#interestRate').textContent = percentFormatter.format(interestRate);
+        qs('#interest').textContent = dollarFormatter.format(yearlyRecord.annualInterest);
+        qs('#annualAddition').textContent = dollarFormatter.format(yearlyRecord.addition);
+        qs('#runningTotal').textContent = dollarFormatter.format(yearlyRecord.total);
+
+    }
+
+    function addDerivativeColumns(yearlyRecords, maxDegree) {
+        // Delete the "1 yr gain" header columns, then recreate the right number of them.
+        qsa('#yearly-rows .derivative').forEach(elem => elem.parentNode.removeChild(elem));
+        const tr = qs('#yearly-rows thead tr');
+
+        for (let i = 0; i < maxDegree; i++) {
+            const td = document.createElement('td');
+            td.textContent = `1 Year Gain ${'`'.repeat(i)}`;
+            td.classList.add('derivative');
+            tr.appendChild(td);
+        }
+
+        const numRows = yearlyRecords.length;
+
+        if (!numRows) return;
+
+        // init array on each row.
+        for (let i = 0; i < numRows; i++) {
+            yearlyRecords[i].derivativesOfTotal = [yearlyRecords[i].total];
+        }
+
+        // We must manually init the values for the first row, but they're all NaN.
+        yearlyRecords[0].derivativesOfTotal.push(... new Array(maxDegree).fill(NaN));
+
+        // Now compute up to the jth derivative for each row.
+        for (let j = 1; j <= maxDegree; j++) {
+            for (let i = 1; i < numRows; i++) {
+                yearlyRecords[i].derivativesOfTotal[j] = yearlyRecords[i].derivativesOfTotal[j - 1] - yearlyRecords[i - 1].derivativesOfTotal[j - 1];
+            }
+        }
+    }
+
+</script>
+<script>
+
+    /**
+     * A compact shorthand of document.querySelector(...);
+     *
+     * @param {string} cssSelector
+     * @param {Element | Document} [contextElement]
+     * @return {HTMLElement | null}
+     */
+    function qs(cssSelector, contextElement = document) {
+        return contextElement.querySelector(cssSelector);
+    }
+
+    /**
+     * A compact shorthand of document.querySelectorAll(...), but returns a real array instead of a NodeList
+     *
+     * @param {string} cssSelector
+     * @param {Element | Document} [contextElement]
+     * @return {Array<HTMLElement>}
+     */
+    function qsa(cssSelector, contextElement = document) {
+        return Array.from(contextElement.querySelectorAll(cssSelector));
+    }
+
+    /**
+     *
+     * @param html
+     * @return {DocumentFragment}
+     */
+    function fromHtml(html) {
+        const div = document.createElement("template");
+        div.innerHTML = html;
+        return div.content;
+    }
+
+    /**
+     * Allows you to schedule callback functions to be called when the DOMContentLoaded event fires.
+     * You can schedule multiple callbacks, and all will be executed in FIFO order. If you schedule a callback
+     * after the event has fired, the callback will still be called.
+     *
+     * This impl is robust and will defend against endless loops if a callback schedules more callbacks - all callbacks will get called,
+     * but a stack unwind will occur between each batch.
+     *
+     *
+     * Similar to the jQuery dom ready function.
+     * @type {function(*=): void}
+     */
+    let domReady = (function initReady() {
+        let queue = [];
+        let domReadyHasFired = false;
+        let execScheduled = false;
+
+        function exec() {
+            domReadyHasFired = true;
+            execScheduled = false;
+
+            // To prevent endless loops in the event that a callback adds another callback, we only iterate callbacks that existed before the loop started.
+            // If more callbacks are added, they will get executed on a future loop.
+            const queueSnapshot = queue;
+            queue = [];
+
+            queueSnapshot.forEach(fn => {
+                try {
+                    fn();
+                } catch (ex) {
+                    console.error(ex);
+                }
+            });
+        }
+
+        function mark() {
+            if (domReadyHasFired && !execScheduled) {
+                execScheduled = true;
+                setTimeout(exec);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', exec);
+
+        return function domReady(fn) {
+            queue.push(fn);
+            if (domReadyHasFired && !execScheduled) {
+                execScheduled = true;
+                setTimeout(exec);
+            }
+        };
+    })();
+
+    document.addEventListener('DOMContentLoaded', evt => {
+        qs('#cagr-calc').addEventListener('submit', evt => {
+            evt.preventDefault();
+            calc();
+        });
+    });
+
+    (function addPersistentFormInputValueBehavior(){
+        // First we setup our memory slot form.
+        let memorySlot = "1";
+
+        domReady(() => {
+            qsa('#cagr-calc-memory input[type=text]').forEach(input => {
+                // Restore saved value
+                input.value = window.localStorage.getItem('saved-' + input.name);
+                // Persist changes to slot labels.
+                input.addEventListener('input', evt => {
+                    window.localStorage.setItem('saved-' + input.name, input.value);
+                });
+            });
+
+            const radioButtons = qsa('#cagr-calc-memory input[type=radio]');
+            radioButtons.forEach(radioButton => {
+                radioButton.addEventListener('change', evt => {
+                    memorySlot = radioButtons.filter(b => b.checked).map(b => b.value)[0];
+                    window.localStorage.setItem('active-memory-slot', memorySlot);
+                    restoreAllCalculationFormValues();
+                    calc();
+                });
+            });
+
+            // Determine saved active slot.
+            memorySlot = window.localStorage.getItem('active-memory-slot') || "1";
+            // set it to checked.
+            radioButtons.filter(o => o.value === memorySlot).forEach(o => o.click());
+            // radioButtons.filter(o => o.value === memorySlot).forEach(o => o.checked = true);
+        });
+
+        // Next we setup the calculation form.
+        function key(name) {
+            return 'memory-' + memorySlot + '-saved-' + name;
+        }
+        function saveFormValues() {
+            window.localStorage.setItem(key(this.name), this.value);
+        }
+        function restoreFormValue(input) {
+            input.value = window.localStorage.getItem(key(input.name));
+        }
+        function copyFormValues(srcMemorySlot, destMemorySlot, inputName) {
+            const srcVal = window.localStorage.getItem(`${srcMemorySlot}-saved-${inputName}`);
+            window.localStorage.setItem(
+                `${destMemorySlot}-saved-${inputName}`,
+                srcVal === null ? '' : srcVal
+            );
+        }
+        function triggerInputEvent(element) {
+            element.dispatchEvent(new Event('input', {
+                bubbles: true,
+                cancelable: true,
+            }));
+        }
+        function restoreAllCalculationFormValues() {
+            qsa('#cagr-calc input:not([type=submit])').forEach(restoreFormValue);
+        }
+        domReady(() => {
+            restoreAllCalculationFormValues();
+            qsa('#cagr-calc input:not([type=submit])').forEach(input => {
+                input.addEventListener('input', saveFormValues);
+            });
+            qs('#cagr-calc input[name=principle]').addEventListener('change', function() {
+                this.value = formatNumberIfPresent(this.value, 2, -9999999999);
+            });
+            qs('#cagr-calc input[name=annualAddition]').addEventListener('change', function() {
+                this.value = formatNumberIfPresent(this.value, 2, -9999999999);
+            });
+            qs('#cagr-calc input[name=annualAdditionInterestRate]').addEventListener('change', function() {
+                this.value = forceToNumberIfPresent(this.value, 2, -100);
+            });
+            qs('#cagr-calc input[name=years]').addEventListener('change', function() {
+                this.value = forceToNumberIfPresent(this.value, 2, 1);
+            });
+            qs('#cagr-calc input[name=interestRate]').addEventListener('change', function() {
+                this.value = forceToNumberIfPresent(this.value, 2, -100);
+            });
+            qs('#cagr-calc input[name=futureValue]').addEventListener('change', function() {
+                this.value = forceToNumberIfPresent(this.value, 2, -100);
+            });
+            qsa('#cagr-calc .add-years').forEach(button => {
+                button.addEventListener('click', function(evt) {
+                    // Only do it if the button was actually focused and clicked.
+                    // If the user submitted the form via the enter key, as a way of updating the calculation, it seems the browser will
+                    // trigger a click event on the first button for us, which we wish to ignore, as it would unexpectedly change the years value.
+                    if (document.activeElement === evt.currentTarget) {
+                        qs('#cagr-calc input[name=years]').value = this.textContent;
+                        qs('#cagr-calc input[name=years]').dispatchEvent(new Event('input', {bubbles: true, cancelable: true}));
+                    }
+                });
+            });
+            qsa('.profiles td').forEach(td => {
+                td.addEventListener('click', evt => {
+                    td.querySelector('[type=radio]').click();
+                });
+            });
+        });
+
+        domReady(() => {
+            function onDragStart(evt) {
+                // Set the name of the memory slot being dragged.
+                evt.dataTransfer.setData("text/plain", qs('input[type=text]', this).name);
+            }
+
+            function onDragOver(evt) {
+                evt.preventDefault();
+                evt.dataTransfer.dropEffect = "copy";
+            }
+
+            function onDrop(evt) {
+                evt.preventDefault();
+                const draggedMemorySlotName = evt.dataTransfer.getData("text/plain");
+                const srcMemoryInput = qs(`[name='${draggedMemorySlotName}']`);
+                const destMemoryInput = qs('input[type=text]', this);
+
+                // Ignore drag + drop to self.
+                if (srcMemoryInput === destMemoryInput) {
+                    return;
+                }
+
+                destMemoryInput.value = srcMemoryInput.value + ' [copy]';
+
+                overwriteProfile(srcMemoryInput, destMemoryInput);
+            }
+
+            function overwriteProfile(srcMemoryInput, destMemoryInput) {
+                // Copy the profile name
+                destMemoryInput.value = srcMemoryInput.value + ' [copy]';
+                triggerInputEvent(destMemoryInput);
+
+                // console.log('setItem', key(this.name), destMemoryInput.value);
+
+                // Now copy the saved values in the profile.
+                qsa('#cagr-calc input:not([type=submit])').forEach(input => {
+                    copyFormValues(srcMemoryInput.name, destMemoryInput.name, input.name);
+                });
+
+                destMemoryInput.click();
+                triggerInputEvent(destMemoryInput);
+            }
+
+            function toggleParentTdDraggable(element, draggableEnabled) {
+                element.closest('td').setAttribute('draggable', draggableEnabled ? 'true' : 'false');
+            }
+
+            qsa('.profiles td').forEach(td => {
+                // Only process td elems that have a descendant input.
+                const input = td.querySelector('input[type=text]');
+                if (!input) {
+                    return;
+                }
+
+                // Setup drag event handlers.
+                td.addEventListener('dragstart', onDragStart);
+                td.addEventListener('dragover', onDragOver);
+                td.addEventListener('drop', onDrop);
+
+                // We want the td elements draggable, but this interferes w/ text selection in child input elements.
+                // To get around it, we use the focus events on the input elements
+                // to enable / disable dragging by adding / removing the draggable=true attribute from the parent td elements.
+
+                // We start by adding the draggable attr.
+                toggleParentTdDraggable(input, true);
+
+                // Then remove attr via focusin event, and add the attr back when input focus leaves.
+                input.addEventListener('focusin', evt => toggleParentTdDraggable(input, false));
+                input.addEventListener('focusout', evt => toggleParentTdDraggable(input, true));
+            });
+
+        });
+
+
+    })();
+
+
+</script>
+
+<h1>Compound Interest Growth Calculator</h1>
+<div>
+    <form id="cagr-calc-memory">
+
+        <table class="profiles">
+            <tr>
+                <td><p>Profile:</p></td>
+                <td><label><input type="radio" name="memory" value="1"> 1</label> <input type="text" name="memory-1" size="10"></td>
+                <td><label><input type="radio" name="memory" value="2"> 2</label> <input type="text" name="memory-2" size="10"></td>
+                <td><label><input type="radio" name="memory" value="3"> 3</label> <input type="text" name="memory-3" size="10"></td>
+                <td><label><input type="radio" name="memory" value="4"> 4</label> <input type="text" name="memory-4" size="10"></td>
+                <td><label><input type="radio" name="memory" value="5"> 5</label> <input type="text" name="memory-5" size="10"></td>
+                <td><label><input type="radio" name="memory" value="6"> 6</label> <input type="text" name="memory-6" size="10"></td>
+                <td><label><input type="radio" name="memory" value="7"> 7</label> <input type="text" name="memory-7" size="10"></td>
+                <td><label><input type="radio" name="memory" value="8"> 8</label> <input type="text" name="memory-8" size="10"></td>
+                <td><label><input type="radio" name="memory" value="9"> 9</label> <input type="text" name="memory-9" size="10"></td>
+            </tr>
+        </table>
+    </form>
+
+    <form id="cagr-calc">
+        <table>
+            <tr>
+                <td><label>Current Principal:</label></td>
+                <td><input type="text" name="principle" size="10" autofocus></td>
+            </tr>
+            <tr>
+                <td><label>Annual Addition: <br><span class="small-note">(applied at end of each year)</span></label></td>
+                <td><input type="text" name="annualAddition" size="10"></td>
+            </tr>
+            <tr>
+                <td><label>Annual Addition Growth Rate:</label></td>
+                <td><input type="text" name="annualAdditionInterestRate" size="10" value="0"> %</td>
+            </tr>
+            <tr>
+                <td><label>Years to grow:</label></td>
+                <td>
+                    <input type="text" name="years" size="6" value="">
+                    <button class="add-years">5</button><button class="add-years">10</button><button class="add-years">20</button><button class="add-years">30</button><button class="add-years">40</button>
+                </td>
+            </tr>
+            <tr>
+                <td><label>Interest Rate:</label></td>
+                <td><input type="text" name="interestRate" size="6" value=""> %</td>
+            </tr>
+            <tr>
+                <td><label>Derivative Degree:</label></td>
+                <td><input type="number" name="derivativeDegree" min="1" max="20" value="1"></td>
+            </tr>
+            <tr>
+                <td>Future Value:</td>
+                <td><input type="text" name="futureValue" size="10"></td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <p style="text-align: center;"><input type="submit" value="Calculate"></p>
+                </td>
+            </tr>
+        </table>
+    </form>
+
+    <div>
+        <table id="yearly-rows" hidden>
+            <thead>
+            <tr>
+                <td>Year</td>
+                <td>Addition</td>
+                <td>Interest</td>
+                <td>Running Total</td>
+                <td class="derivative">1 Yr Gain</td>
+            </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+
+        <div id="sample-explanation" hidden>
+            <p>Example how to read a row in the table:</p>
+            <p>You started the first year with <span id="principal"></span>,
+                and by the end of that year, your interest rate of <span id="interestRate"></span>
+                added <span id="interest"></span>, and your annual addition of <span id="annualAddition"></span>
+                made your end of year running total out to be <span id="runningTotal"></span>.
+            </p>
+        </div>
+    </div>
+</div>
+
+
+
+</body>
+</html>

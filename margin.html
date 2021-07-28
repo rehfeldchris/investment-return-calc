@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>margin</title>
+</head>
+<body>
+<form>
+   <p><label>Owned <input id="owned" value="1000"></label></p>
+   <p><label>Borrowed <input id="borrowed" value="500"></label></p>
+   <p><label>Price Change <input id="priceChange" value="-30">%</label></p>
+   <p><label>Min Maintenance <input id="minMaintenance" value="50">%</label></p>
+   <p><label>Equity <input id="equity" readonly></label></p>
+    <p><label>Maintenance <input id="maintenance" readonly></label></p>
+    <p><label>Excess Liquidity <input id="excessLiquidity" readonly></label></p>
+    <p><label>maxPriceChange <input id="maxPriceChange" readonly></label></p>
+</form>
+
+
+<script>
+(() => {
+    const qs = sel => document.querySelector(sel);
+    const val = sel => Number(qs('#' + sel).value);
+    const eventAll = (selector, event, handler) =>  Array.from(document.querySelectorAll(selector)).forEach(elem => elem.addEventListener(event, handler));
+
+    const calc = evt => {
+        const owned = val('owned');
+        const borrowed = val('borrowed');
+        const total = owned + borrowed;
+        const diff = total * (val('priceChange') / 100);
+        const newTotal = total + diff;
+        const equity = owned + diff;
+        const maintenance = newTotal * (val('minMaintenance') / 100);
+        const excessLiquidity = equity - maintenance;
+
+
+
+        qs('#equity').value = equity;
+        qs('#maintenance').value = maintenance;
+        qs('#excessLiquidity').value = excessLiquidity;
+        qs('#excessLiquidity').style.backgroundColor = excessLiquidity <= 0 ? 'rgba(255,0,0,0.3)' : 'white';
+        qs('#maxPriceChange').value = findMaxPriceChange();
+
+    };
+
+    function findMaxPriceChange() {
+        const owned = val('owned');
+        const borrowed = val('borrowed');
+        const total = owned + borrowed;
+
+        for (let priceChange = -100; priceChange < 0; priceChange += 0.1) {
+            const diff = total * (priceChange / 100);
+            const newTotal = total + diff;
+            const equity = owned + diff;
+            const maintenance = newTotal * (val('minMaintenance') / 100);
+            const excessLiquidity = equity - maintenance;
+            if (excessLiquidity >= 0) {
+                return priceChange;
+            }
+        }
+    }
+
+    qs('form').addEventListener('submit', evt => evt.preventDefault());
+    eventAll('input', 'input', calc);
+    eventAll('input', 'blur', calc);
+    eventAll('input', 'focus', calc);
+})();
+</script>
+</body>
+</html>

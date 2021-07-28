@@ -1,0 +1,256 @@
+<?php
+$escape = function($str) {
+    return htmlspecialchars($str, ENT_QUOTES);
+};
+?><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Stock DRIP CAGR Calculator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.8.0/css/bootstrap-slider.css">
+    <link rel="stylesheet" href="SlidingLoadIndicatorLine.css">
+    <style>
+        input.date-range-slider {
+            width: 100% !important;
+        }
+        .slider {
+            width: 100% !important;
+        }
+
+        .loader {
+            height: 4px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            background-color: #ddd;
+        }
+        .loader:before{
+            display: block;
+            position: absolute;
+            content: "";
+            left: -200px;
+            width: 200px;
+            height: 4px;
+            background-color: #2980b9;
+            animation: loading 2s linear infinite;
+        }
+
+        @keyframes loading {
+            from {left: -200px; width: 30%;}
+            50% {width: 30%;}
+            70% {width: 70%;}
+            80% { left: 50%;}
+            95% {left: 120%;}
+            to {left: 100%;}
+        }
+
+        .result-table td, .result-table th {
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .result-table>tbody td:first-child {
+            text-align: right;
+        }
+
+        table.trailing-gains > tbody > tr > td, table.trailing-gains > thead > tr > th {
+            padding: 2px 5px;
+        }
+        .result-table.table, .trailing-gains.table {
+            width: auto;
+            margin: 1em;
+            float: left;
+        }
+        .row-overtake {
+            background-color: #00d800;
+        }
+        .note {
+            color: #aaa;
+        }
+        abbr[title] {
+            border-bottom: none !important;
+        }
+    </style>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-109525922-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-109525922-1');
+    </script>
+
+</head>
+<body>
+<div class="sliding-load-indicator-line sliding-load-indicator-line-off"></div>
+<div class="container-fluid">
+    <h1 class="text-center"> Return Calculator</h1>
+    <h3 class="text-center">Calc CAGR </h3>
+
+    <details>
+        <summary>Information</summary>
+        <p>This tool helps you calculate trailing total returns (<abbr title="Compound Annual Growth Rate aka Geometric Returns">CAGR</abbr>) for a stock-like investment.
+            It will consider the change in the price of the stock, dividends received over the time period, and splits. It assumes you start by purchasing 1 share of the
+            stock, and it will reinvest the dividends from that point on.</p>
+
+    </details>
+
+    <br>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">Inputs</div>
+        <div class="panel-body">
+            <form class="form-horizontal investment-comparison-form" method="get" action="">
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="numYears">Num Years To Model</label>
+                    <div class="col-sm-2">
+                        <input type="number" class="form-control" id="numYears" name="numYears" required autofocus value="30">
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="lumpStart1">Investment #1 Starting Lump Sum</label>
+                    <div class="col-sm-2">
+                        <input type="number" class="form-control" id="lumpStart1" name="lumpStart1" required autofocus value="10000">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="extraContrib1">Investment #1 Annual Extra Contribution</label>
+                    <div class="col-sm-2">
+                        <input type="number" class="form-control" id="extraContrib1" name="extraContrib1" required autofocus value="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="contribOnFirstYear1">Investment #1 Contribute On First Year?</label>
+                    <div class="col-sm-2">
+                        <input type="checkbox" id="contribOnFirstYear1" name="contribOnFirstYear1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="growthRate1">Investment #1 Annual Growth Rate %</label>
+                    <div class="col-sm-2">
+                        <input type="number" class="form-control" id="growthRate1" name="growthRate1" required autofocus step="0.01" value="7.0">
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="lumpStart2">Investment #2 Starting Lump Sum</label>
+                    <div class="col-sm-2">
+                        <input type="number" class="form-control" id="lumpStart2" name="lumpStart2" required autofocus value="10000">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="extraContrib2">Investment #2 Annual Extra Contribution</label>
+                    <div class="col-sm-2">
+                        <input type="number" class="form-control" id="extraContrib2" name="extraContrib2" required autofocus value="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="contribOnFirstYear2">Investment #2 Contribute On First Year?</label>
+                    <div class="col-sm-2">
+                        <input type="checkbox" id="contribOnFirstYear2" name="contribOnFirstYear2">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-sm-2" for="growthRate2">Investment #2 Annual Growth Rate %</label>
+                    <div class="col-sm-2">
+                        <input type="number" class="form-control" id="growthRate2" name="growthRate2" required autofocus step="0.01" value="7.0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="submit" class="btn btn-default">Submit</button>
+                        <!--                <button type="button" class="btn btn-default testt">Test</button>-->
+                    </div>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+    <h3 class="error-message text-danger"></h3>
+
+    <div class="panel panel-default result-pane" style="display: none">
+        <div class="panel-heading">Results</div>
+        <div class="panel-body">
+            <div class="alert alert-danger data-error-message" style="display:none;">
+
+            </div>
+
+            <table class="table table-bordered table-hover table-striped result-table">
+
+            </table>
+        </div>
+    </div>
+
+</div>
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/9.8.0/bootstrap-slider.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.js"></script>
+<script src="SlidingLoadIndicatorLine.js"></script>
+<script src="investment-comparison.js"></script>
+<script>
+    $(() => {
+        $('[data-toggle=popover]').each((idx, elem) => {
+            $(elem).attr({'data-content': $(elem).attr('title')});
+//            elem.dataset['content'] = $(elem).attr('title');
+            $(elem).attr({'title': $(elem).text()});
+//            elem.title = $(elem).text();
+        });
+        $('[data-toggle=popover]').popover({
+            container: 'body',
+            trigger: 'hover click'
+        });
+
+        // Auto close all other popovers on click anywhere on screen.
+        $('body').on('click', function(event) {
+            $('[data-toggle=popover]').filter((idx, elem) => {
+                return elem !== event.target && !$.contains(elem, event.target);
+            }).popover('hide')
+        });
+
+        const calc = new InvestmentComparisonCalc();
+        calc.setup();
+    });
+
+
+    function doCalc()
+    {
+        zeroBlanks(document.mainform);
+        var p = numval(document.mainform.p.value);
+        var c = numval(document.mainform.c.value);
+        var r = numval(document.mainform.r.value)/100;
+        var y = numval(document.mainform.y.value);
+        var n = numval(document.mainform.n.value);
+
+        if (document.mainform.addTiming[0].checked)
+            document.mainform.fv.value = formatNumber(basicInvestment(p,r/n,y*n,c/n),2);
+        else
+            document.mainform.fv.value = formatNumber(bI2(p,r/n,y*n,c/n),2);
+    }
+
+
+    function bI2(p,r,y,c)
+    {
+        if (c == null) c = 0;
+        if (y == 0) return p;
+        return futureValue(p,r,y) + c*geomSeries(1+r,0,y-1);
+    }
+</script>
+</body>
+</html>
